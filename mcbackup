@@ -1,7 +1,7 @@
 #!/bin/bash
 
-minecraft_server="/home/eallenjacobs/mc-server"
-minecraft_backup="/home/eallenjacobs/backup/minecraft"
+minecraft_server="/opt/minecraft"
+minecraft_backup="/alpha/minecraft"
 tar_file="mc-server.tar.gz"
 
 screen -r minecraft -X stuff "say Backup Starting... $(printf '\r')"
