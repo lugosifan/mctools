@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+
+# Dependencies: screen, wget, curl
+
+set -e -u
+shopt -s extglob
+
+mcsFolder="/opt/minecraft"
+mcsSite=$( curl -s https://minecraft.net/en-us/download/server/ )
+
+download_link=$( grep -o '"https.*jar"' <<< "$mcsSite" | sed 's/"//g')
+
+available_version=$( grep -o 'minecraft_server.*jar' <<< "$mcsSite" | uniq | sed -e 's/minecraft_server\.//' -e 's/\.jar//' )
+local_version=$( find "$mcsFolder" -iname "server.*.jar" -printf "%f\n" | sed -e 's/server\.//g' -e 's/\.jar//g' )
+
+aFname="server.${available_version}.jar"
+lFname="server.${local_version}.jar"
+
+versionCheck(){
+    printf "\n%s \n%s\n\n" \
+        "Available Version:  $available_version" \
+        "Local Version:      $local_version" 
+    if [[ "$available_version" == "$local_version" ]]; then
+        exit 0
+    else
+        local upgradeAnswer="null"
+        while [[ "${upgradeAnswer,,}" != @(y|yes|n|no) ]]; do
+            read -p "Would you like to upgrade? (y or n) " upgradeAnswer
+        done
+        if [[ "${upgradeAnswer,,}" == @(n|no) ]]; then
+            exit 0
+        fi
+    fi
+}
+
+main(){
+    # colors
+    local red=$(tput setaf 1)
+    local green=$(tput setaf 2)
+    local yellow=$(tput setaf 3)
+    local normal=$(tput sgr0)
+    
+    # Run the version check.
+    versionCheck
+
+    cd "$mcsFolder"
+
+    # If minecraft server is running, shut it down.
+    if screen -list | grep -o 'minecraft' &> /dev/null; then
+        printf "Minecraft Server running! Shutting down...\n"
+        screen -S minecraft -X stuff "stop\r"
+        sleep 1
+    fi
+
+    # Create the "archive" folder if it does not exist.
+    if [[ ! -d "archive" ]]; then
+        mkdir archive
+    fi
+    
+    # If older version jar file exists, movie it to the
+    # archive folder.
+    if [[ -a "$lFname" ]]; then
+        mv "$lFname" archive/
+    fi
+    
+    # Perform the upgrade.
+    printf "\nUpgrading...\n\n"
+    sleep ".5"
+    wget "$download_link" -O "$mcsFolder"/"$aFname"
+    printf "${green}$available_version${normal} downloaded and installed.\n"
+    sleep 1
+    
+    # Keep the old version or delete it.
+    if [[ -a archive/${lFname} ]]; then
+        local makeArchive="null"
+        while [[ "${makeArchive,,}" != @(y|yes|n|no) ]]; do
+            read -p "Do you wish to archive the old version? (y or n) " makeArchive
+        done
+        if [[ "${makeArchive,,}" == @(n|no) ]]; then
+            rm archive/"${lFname}"
+            sleep ".5"
+            printf "\n%s\n\n" "${yellow}${lFname}${normal} ${red}deleted!${normal}"
+        else
+            sleep ".5"
+            printf "\n%s\n\n" "${yellow}${lFname}${normal} archived!"
+        fi
+    fi
+            
+    # Prompt to launch minecraft server in a screen session.
+    local answer="null"
+    while [[ "${answer,,}" != @(y|yes|n|no) ]]; do
+        read -p "Do you wish to launch Minecraft Server? (y or n) " answer
+    done
+    case "${answer,,}" in
+        y | yes)
+            screen -d -m -S minecraft java -Xmx1024M -Xms1024M -jar "$mcsFolder"/"$aFname" nogui
+            sleep ".5"
+            printf "\n%s\n" "Minecraft Server ${green}started!${normal}"
+            sleep 1
+            printf "\n%s\n\n" "Exiting program..."
+            ;;
+        n | no)
+            sleep ".5"
+            printf "\n%s\n" "Minecraft Server ${red}not started.${normal}"
+            sleep 1
+            printf "\n%s\n\n" "Exiting program..."
+            ;;
+    esac
+}
+
+main
+
+exit 0
+
+# vim: fo-=t fo+=c tw=60: 

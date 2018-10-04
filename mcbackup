@@ -1,0 +1,18 @@
+#!/bin/bash
+
+minecraft_server="/home/eallenjacobs/mc-server"
+minecraft_backup="/home/eallenjacobs/backup/minecraft"
+tar_file="mc-server.tar.gz"
+
+screen -r minecraft -X stuff "say Backup Starting... $(printf '\r')"
+screen -r minecraft -X stuff "save-off $(printf '\r')"
+screen -r minecraft -X stuff "save-all $(printf '\r')"
+
+rm -f $minecraft_backup/$tar_file.old
+mv $minecraft_backup/$tar_file $minecraft_backup/$tar_file.old
+tar -cpvzf $minecraft_backup/$tar_file $minecraft_server
+
+screen -r minecraft -X stuff "save-on $(printf '\r')"
+screen -r minecraft -X stuff "say Backup complete! $(printf '\r')"
+screen -r minecraft -X stuff "$(printf '\r')"
+screen -r minecraft -X stuff "say Time is $(date +%r) $(printf '\r')"
